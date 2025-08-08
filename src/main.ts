@@ -3,9 +3,13 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ✅ Helmet middleware
+  app.use(helmet());
   app.useGlobalPipes(new ValidationPipe());
 
   const configService = app.get(ConfigService); // ✅ Get ConfigService from DI
