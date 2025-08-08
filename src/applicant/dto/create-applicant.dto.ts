@@ -50,7 +50,7 @@ export class CreateApplicantDto {
   @IsOptional()
   status?: ApplicantStatus;
 
-  // @ApiProperty({ example: 'https://example.com/resume.pdf', description: 'URL to uploaded resume' })
-  @IsUrl()
+  @ApiProperty({ example: 'https://example.com/resume.pdf', description: 'URL to uploaded resume' })
+  // @IsUrl()
   resumeUrl: string;
 }

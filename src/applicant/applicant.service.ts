@@ -12,12 +12,13 @@ export class ApplicantService {
     private readonly applicantRepo: Repository<Applicant>,
   ) {}
 
-  async create(dto: CreateApplicantDto, file: Express.Multer.File) {
-    const applicant = this.applicantRepo.create({
-      ...dto,
-      resumeUrl: file?.path,
-    });
-    return this.applicantRepo.save(applicant);
+  async create(dto: CreateApplicantDto) {
+    
+    // const applicant = this.applicantRepo.create({
+    //   ...dto,
+    //   resumeUrl:  "sdasdasdasd"
+    // });
+    return this.applicantRepo.save(dto);
   }
 
   findAll(query: any) {

@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UseInterceptors,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApplicantService } from './applicant.service';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
@@ -37,16 +38,15 @@ import { AuthGuard } from '@nestjs/passport';
 export class ApplicantController {
   constructor(private readonly applicantService: ApplicantService) {}
 
-  @Post()
-  // @ApiBearerAuth()
-  
-  @Roles(RolesEnum.ADMIN, RolesEnum.HR)
-  @UseGuards(AuthGuard('jwt'), RoleGuard)
 
-  // @UseGuards(RoleGuard)
+
+//
+@Post('resume')
+@UseGuards(AuthGuard('jwt'), RoleGuard)
+@ApiBearerAuth()
+@Roles(RolesEnum.ADMIN, RolesEnum.HR, RolesEnum.REVIEWER)
   @UseInterceptors(
-    FileInterceptor('resume', 
-      {
+    FileInterceptor('file', {
       storage: diskStorage({
         destination: './uploads/resumes',
         filename: (req, file, cb) => {
@@ -54,28 +54,71 @@ export class ApplicantController {
           cb(null, uniqueSuffix + extname(file.originalname));
         },
       }),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
       fileFilter: (req, file, cb) => {
         if (file.mimetype !== 'application/pdf') {
-          return cb(new Error('Only PDFs are allowed'), false);
+          return cb(new BadRequestException('Only PDFs are allowed'), false);
         }
         cb(null, true);
       },
-    }
-  ),
+    }),
   )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Upload a resume PDF and get its URL' })
+  @ApiResponse({ status: 201, description: 'File uploaded successfully' })
+  async uploadResume(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('File is required and must be a PDF');
+    }
+
+    const fileUrl = `http://localhost:3000/uploads/resumes/${file.filename}`; // just for dummy purpose
+    return { fileUrl };
+  }
+//
+@Post()
+@UseGuards(AuthGuard('jwt'), RoleGuard)
+@ApiBearerAuth()
+@Roles(RolesEnum.ADMIN, RolesEnum.HR, RolesEnum.REVIEWER)
+@UseInterceptors(
+  FileInterceptor('resume', {
+    storage: diskStorage({
+      destination: './uploads/resumes',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + extname(file.originalname));
+      },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype !== 'application/pdf') {
+        return cb(new Error('Only PDFs are allowed'), false);
+      }
+      cb(null, true);
+    },
+  }),
+)
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Create a new applicant with resume (PDF only)' })
   @ApiResponse({ status: 201, description: 'Applicant created successfully' })
   create(
     @Body() dto: CreateApplicantDto,
-    @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.applicantService.create(dto, file);
+    return this.applicantService.create(dto);
   }
 
   @Get()
-  @UseGuards(RoleGuard)
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
   @ApiBearerAuth()
   @Roles(RolesEnum.ADMIN, RolesEnum.HR, RolesEnum.REVIEWER)
   @ApiOperation({ summary: 'Get all applicants with optional filters' })
